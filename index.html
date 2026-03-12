@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Змейка за курсором</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family: Inter, system-ui, -apple-system, sans-serif;
+        background: radial-gradient(circle at top, #1a1f2d, #080b12 65%);
+      }
+
+      canvas {
+        display: block;
+      }
+
+      .hint {
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        padding: 10px 12px;
+        font-size: 14px;
+        border-radius: 10px;
+        background: rgb(0 0 0 / 40%);
+        border: 1px solid rgb(255 255 255 / 15%);
+        backdrop-filter: blur(6px);
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="scene"></canvas>
+    <div class="hint">Двигай мышкой — змейка будет следовать за курсором</div>
+
+    <script>
+      const canvas = document.getElementById('scene');
+      const ctx = canvas.getContext('2d');
+
+      const pointer = {
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2
+      };
+
+      const snake = {
+        segmentCount: 28,
+        spacing: 14,
+        speed: 0.12,
+        segments: []
+      };
+
+      function createSegments() {
+        snake.segments = Array.from({ length: snake.segmentCount }, (_, index) => ({
+          x: pointer.x - index * snake.spacing,
+          y: pointer.y
+        }));
+      }
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+
+      function update() {
+        const head = snake.segments[0];
+        head.x += (pointer.x - head.x) * snake.speed;
+        head.y += (pointer.y - head.y) * snake.speed;
+
+        for (let i = 1; i < snake.segments.length; i += 1) {
+          const prev = snake.segments[i - 1];
+          const curr = snake.segments[i];
+
+          const dx = prev.x - curr.x;
+          const dy = prev.y - curr.y;
+          const distance = Math.hypot(dx, dy) || 0.0001;
+          const ratio = (distance - snake.spacing) / distance;
+
+          curr.x += dx * ratio;
+          curr.y += dy * ratio;
+        }
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        for (let i = snake.segments.length - 1; i >= 0; i -= 1) {
+          const segment = snake.segments[i];
+          const t = i / (snake.segments.length - 1);
+          const radius = 4 + (1 - t) * 12;
+
+          ctx.beginPath();
+          ctx.arc(segment.x, segment.y, radius, 0, Math.PI * 2);
+          ctx.fillStyle = `hsl(${120 + t * 80}, 95%, ${42 + (1 - t) * 15}%)`;
+          ctx.fill();
+        }
+
+        const head = snake.segments[0];
+        const neck = snake.segments[1] || head;
+        const angle = Math.atan2(head.y - neck.y, head.x - neck.x);
+
+        drawEye(head.x, head.y, angle, 1);
+        drawEye(head.x, head.y, angle, -1);
+      }
+
+      function drawEye(x, y, angle, side) {
+        const offsetAngle = angle + side * Math.PI * 0.34;
+        const eyeX = x + Math.cos(offsetAngle) * 8;
+        const eyeY = y + Math.sin(offsetAngle) * 8;
+
+        ctx.beginPath();
+        ctx.arc(eyeX, eyeY, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#021';
+        ctx.fill();
+      }
+
+      function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+      }
+
+      window.addEventListener('mousemove', (event) => {
+        pointer.x = event.clientX;
+        pointer.y = event.clientY;
+      });
+
+      window.addEventListener('touchmove', (event) => {
+        const touch = event.touches[0];
+        if (!touch) return;
+        pointer.x = touch.clientX;
+        pointer.y = touch.clientY;
+      }, { passive: true });
+
+      window.addEventListener('resize', resize);
+
+      resize();
+      createSegments();
+      loop();
+    </script>
+  </body>
+</html>
